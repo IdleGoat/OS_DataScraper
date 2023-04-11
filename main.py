@@ -1,10 +1,12 @@
 from bs4 import BeautifulSoup
 import os
+import email
+import base64
 
 # Define the directory containing the HTML files to be scraped
 directory = 'scrape/'
 # Create a new text file to save the output
-output_file = open('OS.txt', 'w')
+output_file = open('OS_21.22_Final.txt', 'w', encoding='utf-8')
 
 question_counter = 1
 
@@ -12,13 +14,30 @@ printed_questions = set()
 
 # Loop through each file in the directory
 for filename in os.listdir(directory):
-    if filename.endswith(".html"):
+    if filename.endswith(".html") or filename.endswith(".mhtml"):
         filepath = os.path.join(directory, filename)
 
-        # Load the HTML file using requests library
-        with open(filepath, "r") as f:
-            html_text = f.read()
-        soup = BeautifulSoup(html_text, 'html.parser')
+        # Load the HTML file using BeautifulSoup if it's an HTML file
+        if filename.endswith(".html"):
+            with open(filepath, "r", encoding="utf-8") as f:
+                html_text = f.read()
+            soup = BeautifulSoup(html_text, 'html.parser')
+        # Load the MHTML file using the email library if it's an MHTML file
+        elif filename.endswith(".mhtml"):
+            with open(filepath, "rt") as f:
+                msg = email.message_from_file(f)
+            html_part = None
+            for part in msg.walk():
+                if part.get_content_type() == "text/html":
+                    html_part = part
+                    break
+            if html_part is None:
+                continue
+            html_data = html_part.get_payload(decode=True)
+            if html_part.get("Content-Transfer-Encoding") == "base64":
+                html_data = base64.b64decode(html_data)
+            html_text = html_data.decode('utf-8')
+            soup = BeautifulSoup(html_text, 'html.parser')
 
         # Extract all question divs
         question_divs = soup.find_all('div', {'class': 'que'})
